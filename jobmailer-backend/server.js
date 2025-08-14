@@ -9,6 +9,7 @@ const session = require('express-session');
 const { Pool } = require('pg');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const multer = require('multer');
+const nodemailer = require('nodemailer');
 const pdf = require('pdf-parse');
 
 // --- Multer Configuration for file uploads ---
@@ -44,6 +45,18 @@ const pool = new Pool({
 });
 pool.connect().then(() => console.log('Connected to PostgreSQL database')).catch(err => console.error('DB Connection Error', err.stack));
 
+// --- Middleware to Authenticate JWT Token (you should already have this) ---
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token == null) return res.sendStatus(401);
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
+}
 
 // --- Passport.js (Google OAuth) Configuration ---
 passport.use(new GoogleStrategy({
@@ -230,6 +243,53 @@ app.post('/api/ai/generate-email', upload.single('resume'), async (req, res) => 
         res.status(500).json({ message: 'Failed to generate email body.' });
     }
 });
+
+// --- NEW EMAIL DISPATCH ROUTE ---
+app.post('/api/emails/dispatch', authenticateToken, upload.single('resume'), async (req, res) => {
+    const { recruiterEmail, role, emailBody, userName } = req.body;
+    
+    if (!recruiterEmail || !role || !emailBody || !req.file) {
+        return res.status(400).json({ message: 'Missing required fields for sending email.' });
+    }
+
+    // 1. Create a Nodemailer transporter using your Gmail credentials
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS, // Use the App Password here
+        },
+    });
+
+    // 2. Extract subject from the email body (assuming first line is the subject)
+    const bodyLines = emailBody.split('\n');
+    const subject = `Application for ${role} - ${userName}`; // A more robust subject line
+
+    // 3. Define the email options
+    const mailOptions = {
+        from: `"${userName}" <${process.env.EMAIL_USER}>`, // Sender address (shows your name)
+        to: recruiterEmail,             // Recipient
+        subject: subject,               // Subject line
+        html: emailBody.replace(/\n/g, '<br>'), // Convert newlines to HTML line breaks for better formatting
+        attachments: [
+            {
+                filename: req.file.originalname,
+                content: req.file.buffer,
+            },
+        ],
+    };
+
+    // 4. Send the email
+    try {
+        await transporter.sendMail(mailOptions);
+        // We will add database saving here in the next step
+        res.status(200).json({ success: true, message: 'Email sent successfully!' });
+    } catch (error) {
+        console.error('Nodemailer Error:', error);
+        res.status(500).json({ success: false, message: 'Failed to send email.' });
+    }
+});
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

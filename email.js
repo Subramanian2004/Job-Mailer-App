@@ -150,7 +150,8 @@ async function sendEmail() {
     const role = document.getElementById('role-input').value; 
     const emailBody = document.getElementById('body-text').value;
     const resumeFile = document.getElementById('resume-upload').files[0];
-    const button = this;
+    const button =  document.getElementById('send-email');
+    const userData = JSON.parse(localStorage.getItem('userData'));
 
     if (!recruiterEmail || !validateEmail(recruiterEmail)) {
         showStatus("Please enter a valid email address.", "error");
@@ -172,14 +173,36 @@ async function sendEmail() {
     button.disabled = true;
     button.textContent = "Sending...";
 
+     // Use FormData to send text and the file
+    const formData = new FormData();
+    formData.append('recruiterEmail', recruiterEmail);
+    formData.append('role', role);
+    formData.append('emailBody', emailBody);
+    formData.append('resume', resumeFile);
+    formData.append('userName', userData.name);
+
     try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        const emailData = { recruiterEmail, role, emailBody, resumeFile: resumeFile.name };
-        saveEmailToHistory(emailData);
-        showStatus("Email sent and saved successfully!", "success");
+        const token = localStorage.getItem('userToken');
+        const response = await fetch('http://localhost:3000/api/emails/dispatch', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+        
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.message || 'Failed to send email.');
+        }
+
+        // Email was sent, now save it to our local history for the UI
+        saveEmailToHistory({ recruiterEmail, role, emailBody, resumeFile: resumeFile.name });
+
+        showStatus("Email sent successfully!", "success");
         clearForm();
+
     } catch (error) {
-        showStatus("Failed to send email. Please try again.", "error");
+        showStatus(error.message, "error");
     } finally {
         button.disabled = false;
         button.textContent = "Send Email";
