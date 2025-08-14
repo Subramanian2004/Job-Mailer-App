@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Event listeners
     document.getElementById('search-emails').addEventListener('input', filterEmails);
-    document.getElementById('filter-role').addEventListener('change', filterEmails);
+    document.getElementById('search-role').addEventListener('input', filterEmails);
     document.getElementById('prev-page').addEventListener('click', () => changePage(-1));
     document.getElementById('next-page').addEventListener('click', () => changePage(1));
     
@@ -137,7 +137,7 @@ function displayEmails(filteredData = null) {
             <td>${email.recruiterEmail}</td>
             <td>${email.role}</td>
             <td>${formatDate(email.dateSent)}</td>
-            <td><span class="status-badge status-${email.status}">${email.status}</span></td>
+            <td><span class="status-badge status-${email.status || 'sent'}">${email.status || 'sent'}</span></td>
             <td>
                 <div class="action-btns">
                     <button class="view-btn" onclick="viewEmail(${email.id})">
@@ -145,6 +145,9 @@ function displayEmails(filteredData = null) {
                     </button>
                     <button class="resend-btn" onclick="resendEmail(${email.id})">
                         <i class="fas fa-redo"></i> Resend
+                    </button>
+                    <button class="delete-btn" onclick="deleteEmail(${email.id})">
+                        <i class="fas fa-trash"></i> Delete
                     </button>
                 </div>
             </td>
@@ -172,25 +175,30 @@ function changePage(direction) {
 
 // Filter emails
 function filterEmails() {
-    const searchTerm = document.getElementById('search-emails').value.toLowerCase();
-    const roleFilter = document.getElementById('filter-role').value;
+    const emailSearchTerm = document.getElementById('search-emails').value.toLowerCase();
+    const roleSearchTerm = document.getElementById('search-role').value.toLowerCase();
     
-    let filtered = emailHistory;
+    let filtered = emailHistory; // Start with the full list
     
-    if (searchTerm) {
+    // First, filter by the email search term
+    if (emailSearchTerm) {
         filtered = filtered.filter(email => 
-            email.recruiterEmail.toLowerCase().includes(searchTerm) ||
-            email.role.toLowerCase().includes(searchTerm)
+            email.recruiterEmail.toLowerCase().includes(emailSearchTerm)
         );
     }
     
-    if (roleFilter) {
-        filtered = filtered.filter(email => email.role === roleFilter);
+    // THEN, filter the result by the role search term
+    if (roleSearchTerm) {
+        // This logic now checks if the email's role INCLUDES the search text
+        filtered = filtered.filter(email => 
+            email.role.toLowerCase().includes(roleSearchTerm)
+        );
     }
     
-    currentPage = 1;
+    currentPage = 1; // Reset to the first page for new search results
     displayEmails(filtered);
 }
+
 
 // View email details
 function viewEmail(id) {
@@ -203,10 +211,10 @@ function viewEmail(id) {
             <p><strong>To:</strong> ${email.recruiterEmail}</p>
             <p><strong>Role:</strong> ${email.role}</p>
             <p><strong>Date:</strong> ${formatDate(email.dateSent)}</p>
-            <p><strong>Status:</strong> <span class="status-badge status-${email.status}">${email.status}</span></p>
+            <p><strong>Status:</strong> <span class="status-badge status-${email.status || 'sent'}">${email.status || 'sent'}</span></p>
             <hr>
             <p><strong>Email Body:</strong></p>
-            <div style="background-color: #252b38; padding: 15px; border-radius: 8px; margin-top: 10px;">
+            <div class="email-body-container">
                 ${email.emailBody}
             </div>
         `;
@@ -228,6 +236,35 @@ async function resendEmail(id) {
         window.location.href = './index.html';
     }
 }
+
+//Delete email
+function deleteEmail(id) {
+    // Find the email to be deleted
+    const emailToDelete = emailHistory.find(e => e.id === id);
+    if (!emailToDelete) return; // Exit if email not found
+
+    // Ask for confirmation before deleting
+    const isConfirmed = confirm(`Are you sure you want to delete the email sent to ${emailToDelete.recruiterEmail}?`);
+
+    if (isConfirmed) {
+        // 1. Filter out the email to be deleted from the main history array
+        emailHistory = emailHistory.filter(email => email.id !== id);
+        
+        // 2. Update localStorage with the new, shorter array
+        localStorage.setItem('emailHistory', JSON.stringify(emailHistory));
+        
+        // 3. Re-display the emails on the current page
+        // We call displayEmails() without arguments to refresh from the updated emailHistory array
+        displayEmails();
+        
+        // 4. Update the statistics cards
+        updateStats();
+
+        // You can implement a toast notification here if you like.
+        console.log('Email deleted successfully.');
+    }
+}
+
 
 // Close modal
 function closeModal() {
