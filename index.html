@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email sender - JobMailer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <header>
+        <div class="Email-header">
+            <div class="header-left-section">
+                <h1 class="app-title colors">JobMailer</h1>
+            </div>
+            <nav class="header-right-section"> 
+                <a href="./home.html"><h3>Home</h3></a>
+                <a href="./index.html" class="active"><h3>Templates</h3></a>
+                <a href="./history.html"><h3>History</h3></a>
+                
+                <!-- Profile Dropdown -->
+                <div class="profile-dropdown">
+                    <img
+                        src="./IMG_0510.JPG"
+                        alt="Profile"
+                        class="profile-pic"
+                        id="profile-pic"
+                    />
+                    <div class="dropdown-menu" id="dropdown-menu">
+                        <div class="dropdown-header">
+                            <img src="./IMG_0510.JPG" alt="Profile" class="dropdown-avatar">
+                            <div class="dropdown-info">
+                                <p class="dropdown-name" id="user-name">User Name</p>
+                                <p class="dropdown-email" id="user-email">user@email.com</p>
+                            </div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item" id="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <div class="contents-box">
+        <h1 class="colors">Send a Job Email in Seconds</h1>
+        <div class="recruiter">
+            <p class="content-heading colors">Recruiter Email</p>
+            <input type="email" placeholder="recruiter@gmail.com" class="box-item">
+        </div>
+
+        <div class="role-template">
+            <label for="">
+                <p class="content-heading colors">Role Template</p>
+                <select name="" id="options">
+                    <option class="role-option" value="1">Web Developer</option>
+                    <option class="role-option" value="2">Front End Developer</option>
+                    <option class="role-option" value="3">Full Stack Developer</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="resume">
+            <p class="content-heading colors" id="resume-heading">Resume</p>
+            <label for="resume-upload" class="resume-content">
+                <i id="file-icon" class="fas fa-file-pdf" style="color: #d32f2f; font-size: 24px;"></i>
+                <div>
+                    <h3 class="resume-txt colors">Choose File</h3>
+                    <p class="resume-txt" id="file-name">resume.pdf</p>
+                </div>
+            </label>
+            <!-- Hidden file input -->
+            <input type="file" id="resume-upload" accept=".pdf,.doc,.docx" hidden>
+        </div>
+
+        <div class="email-body">
+            <p class="content-heading colors">Email Body (optional)</p>
+            <textarea name="" id="body-text" placeholder="Preview or edit your email body here"></textarea>
+        </div>
+
+        <div>
+            <button class="buttons colors" id="Generate-ai">Generate with AI</button>
+            <button class="buttons" id="send-email">Send Email</button>
+        </div>
+    </div>
+
+    <footer>
+        <div>
+            <p id="status" class="colors"></p>
+        </div>
+        <div class="last">
+            <a href="https://github.com/Subramanian2004" target="_blank">
+                <i class="fab fa-github"></i>
+            </a>
+            <p class="colors">Built for personal job application automation with AI</p>
+        </div>
+    </footer>
+
+    <script src="./email.js"></script>
+</body>
+</html>

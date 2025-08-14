@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Email History - JobMailer</title>
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  />
+  <link rel="stylesheet" href="./history.css" />
+</head>
+<body>
+  <header class="Email-header">
+    <div class="header-left-section">
+      <h1 class="app-title">JobMailer</h1>
+    </div>
+    <nav class="header-right-section"> 
+      <a href="./home.html"><h3>Home</h3></a>
+      <a href="./index.html"><h3>Templates</h3></a>
+      <a href="./history.html" class="active"><h3>History</h3></a>
+      
+      <!-- Profile Dropdown -->
+      <div class="profile-dropdown">
+        <img
+          src="./IMG_0510.JPG"
+          alt="Profile"
+          class="profile-pic"
+          id="profile-pic"
+        />
+        <div class="dropdown-menu" id="dropdown-menu">
+          <div class="dropdown-header">
+            <img src="./IMG_0510.JPG" alt="Profile" class="dropdown-avatar">
+            <div class="dropdown-info">
+              <p class="dropdown-name" id="user-name">User Name</p>
+              <p class="dropdown-email" id="user-email">user@email.com</p>
+            </div>
+          </div>
+          <div class="dropdown-divider"></div>
+          <a href="#" class="dropdown-item" id="logout-btn">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Logout</span>
+          </a>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="contents-box">
+    <div class="history-header">
+      <h2 class="content-heading">Email History</h2>
+      <div class="history-controls">
+        <input type="text" id="search-emails" placeholder="Search emails..." class="search-box">
+        <select id="filter-role" class="filter-select">
+          <option value="">All Roles</option>
+          <option value="Web Developer">Web Developer</option>
+          <option value="Front End Developer">Front End Developer</option>
+          <option value="Full Stack Developer">Full Stack Developer</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="stats-container">
+      <div class="stat-card">
+        <i class="fas fa-envelope"></i>
+        <h3 id="total-sent">0</h3>
+        <p>Total Sent</p>
+      </div>
+      <div class="stat-card">
+        <i class="fas fa-calendar-day"></i>
+        <h3 id="sent-today">0</h3>
+        <p>Sent Today</p>
+      </div>
+      <div class="stat-card">
+        <i class="fas fa-briefcase"></i>
+        <h3 id="unique-roles">0</h3>
+        <p>Unique Roles</p>
+      </div>
+    </div>
+
+    <table class="sent-emails-table">
+      <thead>
+        <tr>
+          <th>Recruiter Email</th>
+          <th>Role</th>
+          <th>Date Sent</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="email-history-body">
+        <!-- Dynamic content will be loaded here -->
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <button id="prev-page" class="page-btn">Previous</button>
+      <span id="page-info">Page 1 of 1</span>
+      <button id="next-page" class="page-btn">Next</button>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-content">
+      <a href="https://github.com/Subramanian2004" target="_blank">
+        <i class="fab fa-github"></i>
+      </a>
+      <p class="colors">Built for personal job application automation with AI</p>
+    </div>
+  </footer>
+
+  <!-- Email Preview Modal -->
+  <div id="email-modal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Email Preview</h3>
+      <div id="email-preview-content"></div>
+    </div>
+  </div>
+
+  <script src="./history.js"></script>
+</body>
+</html>
