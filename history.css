@@ -55,21 +55,22 @@ body {
 
 /* Profile Dropdown Styles */
 .profile-dropdown {
-  position: relative;
+    position: relative;
 }
 
 .profile-pic {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid #444;
-  cursor: pointer;
-  transition: transform 0.2s ease;
+    width: 40px;
+    height: 45px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-left: 10px;
+    border: 2px solid #444;
+    cursor: pointer;
+    transition: transform 0.2s ease;
 }
 
 .profile-pic:hover {
-  transform: scale(1.05);
+    transform: scale(1.05);
 }
 
 .dropdown-menu {
@@ -462,7 +463,7 @@ footer a i:hover {
     line-height: 1.6;
 }
 
-/* Optional: Custom scrollbar styling */
+/* Custom scrollbar styling */
 .email-body-container::-webkit-scrollbar {
     width: 8px;
 }
@@ -483,16 +484,30 @@ footer a i:hover {
 /* Responsive Design */
 @media (max-width: 768px) {
   .Email-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-  }
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 10px;
+    }
 
-  .header-right-section {
-    width: 100%;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
+    .app-title {
+        margin-bottom: 10px;
+        margin-left: 150px;
+        padding-bottom: 10px;
+        padding-top: 10px;
+    }
+
+    .header-right-section {
+        gap: 15px;
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+
+    .profile-pic {
+        width: 35px;
+        height: 35px;
+        margin-left: 0;
+    }
 
   .history-header {
     flex-direction: column;

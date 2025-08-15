@@ -183,20 +183,40 @@ async function sendEmail() {
 
     try {
         const token = localStorage.getItem('userToken');
-        const response = await fetch('http://localhost:3000/api/emails/dispatch', {
+
+        // Dispatch the email using the Nodemailer route
+        const dispatchResponse = await fetch('http://localhost:3000/api/emails/dispatch', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` },
             body: formData
         });
         
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.message || 'Failed to send email.');
+        const dispatchResult = await dispatchResponse.json();
+        if (!dispatchResponse.ok) {
+            throw new Error(dispatchResult.message || 'Failed to send email.');
         }
 
-        // Email was sent, now save it to our local history for the UI
-        saveEmailToHistory({ recruiterEmail, role, emailBody, resumeFile: resumeFile.name });
+
+        // If sending was successful, save the record to the database history
+        const historyResponse = await fetch('http://localhost:3000/api/history', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                recruiterEmail: recruiterEmail,
+                role: role,
+                emailBody: emailBody,
+                resumeFile: resumeFile.name
+            })
+        });
+
+        if (!historyResponse.ok) {
+            // If saving to DB fails, we can fall back to localStorage as a temporary measure
+            // or just show an error. For now, we'll just log it.
+            console.error("Failed to save history to database.");
+        }
 
         showStatus("Email sent successfully!", "success");
         clearForm();

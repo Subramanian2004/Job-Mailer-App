@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Email History - JobMailer</title>
+  <title>Email History - MailMagE</title>
   <link
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
@@ -11,40 +11,37 @@
   <link rel="stylesheet" href="./history.css" />
 </head>
 <body>
-  <header class="Email-header">
-    <div class="header-left-section">
-      <h1 class="app-title">JobMailer</h1>
-    </div>
-    <nav class="header-right-section"> 
-      <a href="./home.html"><h3>Home</h3></a>
-      <a href="./index.html"><h3>Templates</h3></a>
-      <a href="./history.html" class="active"><h3>History</h3></a>
-      
-      <!-- Profile Dropdown -->
-      <div class="profile-dropdown">
-        <img
-          src="./IMG_0510.JPG"
-          alt="Profile"
-          class="profile-pic"
-          id="profile-pic"
-        />
-        <div class="dropdown-menu" id="dropdown-menu">
-          <div class="dropdown-header">
-            <img src="./IMG_0510.JPG" alt="Profile" class="dropdown-avatar">
-            <div class="dropdown-info">
-              <p class="dropdown-name" id="user-name">User Name</p>
-              <p class="dropdown-email" id="user-email">user@email.com</p>
+    <header>
+        <div class="Email-header">
+            <div class="header-left-section">
+                <h1 class="app-title colors">MailMagE</h1>
             </div>
-          </div>
-          <div class="dropdown-divider"></div>
-          <a href="#" class="dropdown-item" id="logout-btn">
-            <i class="fas fa-sign-out-alt"></i>
-            <span>Logout</span>
-          </a>
+            <nav class="header-right-section"> 
+                <a href="./home.html"><h3>Home</h3></a>
+                <a href="./index.html"><h3>Job Mail</h3></a>
+                <a href="./compose.html"><h3>Personal Mail</h3></a>
+                <a href="./history.html" class="active"><h3>History</h3></a>
+                
+                <div class="profile-dropdown">
+                    <img src="./IMG_0510.JPG" alt="Profile" class="profile-pic" id="profile-pic"/>
+                    <div class="dropdown-menu" id="dropdown-menu">
+                        <div class="dropdown-header">
+                            <img src="./IMG_0510.JPG" alt="Profile" class="dropdown-avatar">
+                            <div class="dropdown-info">
+                                <p class="dropdown-name" id="user-name">User</p>
+                                <p class="dropdown-email" id="user-email">user@email.com</p>
+                            </div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item" id="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
         </div>
-      </div>
-    </nav>
-  </header>
+    </header>
 
   <main class="contents-box">
     <div class="history-header">
@@ -52,12 +49,6 @@
       <div class="history-controls">
         <input type="text" id="search-emails" placeholder="Search emails..." class="search-box">
         <input type="text" id="search-role" placeholder="Search by role..." class="search-box">
-        <!-- <select id="filter-role" class="filter-select">
-          <option value="">All Roles</option>
-          <option value="Web Developer">Web Developer</option>
-          <option value="Front End Developer">Front End Developer</option>
-          <option value="Full Stack Developer">Full Stack Developer</option>
-        </select> -->
       </div>
     </div>
 
@@ -106,7 +97,7 @@
       <a href="https://github.com/Subramanian2004" target="_blank">
         <i class="fab fa-github"></i>
       </a>
-      <p class="colors">Built for personal job application automation with AI</p>
+      <p class="colors">Built for personal Gmail automation with AI !!</p>
     </div>
   </footer>
 

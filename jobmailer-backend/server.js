@@ -21,7 +21,7 @@ require('dotenv').config();
 const app = express();
 
 // --- Middleware ---
-app.use(cors()); // Allow requests from your frontend
+app.use(cors()); // Allow requests from the frontend
 app.use(express.json()); // Parse JSON bodies
 app.use(session({
     secret: process.env.SESSION_SECRET,
@@ -45,7 +45,7 @@ const pool = new Pool({
 });
 pool.connect().then(() => console.log('Connected to PostgreSQL database')).catch(err => console.error('DB Connection Error', err.stack));
 
-// --- Middleware to Authenticate JWT Token (you should already have this) ---
+// --- Middleware to Authenticate JWT Token  ---
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -252,12 +252,12 @@ app.post('/api/emails/dispatch', authenticateToken, upload.single('resume'), asy
         return res.status(400).json({ message: 'Missing required fields for sending email.' });
     }
 
-    // 1. Create a Nodemailer transporter using your Gmail credentials
+    // 1. Create a Nodemailer transporter using the Gmail credentials
     const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS, // Use the App Password here
+            pass: process.env.EMAIL_PASS, 
         },
     });
 
@@ -267,7 +267,7 @@ app.post('/api/emails/dispatch', authenticateToken, upload.single('resume'), asy
 
     // 3. Define the email options
     const mailOptions = {
-        from: `"${userName}" <${process.env.EMAIL_USER}>`, // Sender address (shows your name)
+        from: `"${userName}" <${process.env.EMAIL_USER}>`, // Sender address (shows user name)
         to: recruiterEmail,             // Recipient
         subject: subject,               // Subject line
         html: emailBody.replace(/\n/g, '<br>'), // Convert newlines to HTML line breaks for better formatting
@@ -290,6 +290,156 @@ app.post('/api/emails/dispatch', authenticateToken, upload.single('resume'), asy
     }
 });
 
+// --- EMAIL HISTORY ROUTES ---
+// 1. GET: Fetch all email history for the logged-in user
+app.get('/api/history', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id; // Get user ID from the authenticated token
+        const historyResult = await pool.query(
+            'SELECT * FROM email_history WHERE user_id = $1 ORDER BY sent_at DESC',
+            [userId]
+        );
+        res.json(historyResult.rows);
+    } catch (error) {
+        console.error('Error fetching history:', error);
+        res.status(500).json({ message: 'Failed to retrieve email history.' });
+    }
+});
+
+// 2. POST: Save a new sent email to the user's history
+app.post('/api/history', authenticateToken, async (req, res) => {
+    const { recruiterEmail, role, emailBody, resumeFile } = req.body;
+    const userId = req.user.id;
+
+    if (!recruiterEmail || !role || !emailBody) {
+        return res.status(400).json({ message: 'Missing required history data.' });
+    }
+
+    try {
+        const newHistoryEntry = await pool.query(
+            `INSERT INTO email_history (user_id, recruiter_email, role, email_body, resume_file, sent_at) 
+             VALUES ($1, $2, $3, $4, $5, NOW()) RETURNING *`,
+            [userId, recruiterEmail, role, emailBody, resumeFile]
+        );
+        res.status(201).json(newHistoryEntry.rows[0]);
+    } catch (error) {
+        console.error('Error saving history:', error);
+        res.status(500).json({ message: 'Failed to save email to history.' });
+    }
+});
+
+// 3. DELETE: Remove an email from the user's history
+app.delete('/api/history/:id', authenticateToken, async (req, res) => {
+    try {
+        const historyId = req.params.id;
+        const userId = req.user.id;
+
+        const deleteResult = await pool.query(
+            // We also check user_id to ensure a user can only delete THEIR OWN history
+            'DELETE FROM email_history WHERE id = $1 AND user_id = $2 RETURNING *',
+            [historyId, userId]
+        );
+
+        if (deleteResult.rowCount === 0) {
+            return res.status(404).json({ message: 'History item not found or you do not have permission to delete it.' });
+        }
+
+        res.status(200).json({ message: 'History item deleted successfully.' });
+    } catch (error) {
+        console.error('Error deleting history:', error);
+        res.status(500).json({ message: 'Failed to delete history item.' });
+    }
+});
+
+// UPDATED: Route for sending general emails (now with optional attachment)
+// We add the `upload.single('attachment')` middleware
+app.post('/api/emails/dispatch-general', authenticateToken, upload.single('attachment'), async (req, res) => {
+    // Note: with multer, text fields are in req.body, file is in req.file
+    const { recipientEmail, subject, emailBody, userName } = req.body;
+
+    if (!recipientEmail || !subject || !emailBody || !userName) {
+        return res.status(400).json({ message: 'Missing required fields.' });
+    }
+
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+        },
+    });
+
+    const mailOptions = {
+        from: `"${userName}" <${process.env.EMAIL_USER}>`,
+        to: recipientEmail,
+        subject: subject,
+        html: emailBody.replace(/\n/g, '<br>'),
+        attachments: [], // Start with an empty attachments array
+    };
+    
+    // NEW: If a file was uploaded, add it to the attachments array
+    if (req.file) {
+        mailOptions.attachments.push({
+            filename: req.file.originalname,
+            content: req.file.buffer,
+            contentType: req.file.mimetype,
+        });
+    }
+
+    try {
+        await transporter.sendMail(mailOptions);
+        // We could also save this to history, but we'll skip that for now to keep it simple.
+        res.status(200).json({ success: true, message: 'Email sent successfully!' });
+    } catch (error) {
+        console.error('General Nodemailer Error:', error);
+        res.status(500).json({ success: false, message: 'Failed to send email.' });
+    }
+});
+
+// server.js -> replace this route
+
+app.post('/api/ai/compose-email', authenticateToken, async (req, res) => {
+    const { points } = req.body; // Subject is no longer needed from the user
+    const userName = req.user.name;
+
+    if (!points) {
+        return res.status(400).json({ message: 'Key points are required.' });
+    }
+
+    // --- NEW PROMPT FOR JSON OUTPUT ---
+    const prompt = `
+        You are an AI assistant that writes professional emails.
+        Analyze the user's key points and generate a JSON object containing a suitable "subject" and a full "emailBody".
+
+        **CRITICAL:** Your output MUST be a valid JSON object in the format: {"subject": "string", "emailBody": "string"}. Do not include any other text or markdown formatting.
+
+        **Instructions for Generation:**
+        1.  **Subject:** Create a concise, professional subject line that accurately summarizes the key points.
+        2.  **Email Body:** Expand the user's points into a complete, well-formatted, and professional email. Include a suitable greeting (e.g., "Hello,") and a closing signature (e.g., "Best regards,\n${userName}").
+
+        **User's Key Points to analyze:**
+        ---
+        ${points}
+        ---
+    `;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        // Clean the response to ensure it's valid JSON
+        let jsonString = response.text().replace(/```json\n/g, '').replace(/```/g, '').trim();
+        
+        // Parse the JSON string into an object
+        const emailData = JSON.parse(jsonString);
+        
+        // Send the structured data back to the frontend
+        res.json(emailData);
+
+    } catch (error) {
+        console.error("AI composition error:", error);
+        res.status(503).json({ message: "AI service is currently unavailable. Please try again." });
+    }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
