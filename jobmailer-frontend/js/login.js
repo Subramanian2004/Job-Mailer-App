@@ -217,3 +217,43 @@ window.addEventListener('DOMContentLoaded', () => {
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 });
+
+// --- Verify JWT token with backend ---
+async function verifyToken() {
+  const token = localStorage.getItem('userToken');
+
+  try {
+    const response = await fetch(`${API_URL}/auth/verify`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (response.ok) {
+      // Token valid → go to dashboard
+      window.location.href = './index.html';
+    } else {
+      // Token invalid → clear storage
+      localStorage.removeItem('userToken');
+      localStorage.removeItem('userData');
+    }
+  } catch (error) {
+    console.error('❌ Token verification failed:', error);
+    localStorage.removeItem('userToken');
+    localStorage.removeItem('userData');
+  }
+}
+
+// --- Simple toast popup ---
+function showToast(message, type = '') {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+
+  toast.textContent = message;
+  toast.className = `toast show ${type}`;
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
+

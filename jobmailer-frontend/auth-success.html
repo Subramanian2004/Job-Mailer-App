@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Authentication Success - JobMailer</title>
+    <title>Authentication Success - MailMagE</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
@@ -82,38 +82,52 @@
     </div>
 
     <script>
-        // Get URL parameters
+        // Parse URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get('token');
         const userDataString = urlParams.get('user');
 
         if (token && userDataString) {
             try {
-                // Decode user data
-                const userData = JSON.parse(decodeURIComponent(userDataString));
-                
-                // Store in localStorage
-                localStorage.setItem('userToken', token);
-                localStorage.setItem('userData', JSON.stringify(userData));
-                
-                // Redirect to dashboard after 2 seconds
-                setTimeout(() => {
-                    window.location.href = './index.html';
-                }, 2000);
+            // Decode user data
+            const userData = JSON.parse(decodeURIComponent(userDataString));
+
+            // Save token and user info in localStorage
+            localStorage.setItem('userToken', token);
+            localStorage.setItem('userData', JSON.stringify(userData));
+
+            console.log("✅ Auth success:", userData);
+
+            // Redirect to dashboard after short delay
+            setTimeout(() => {
+                window.location.href = './index.html';
+            }, 2000);
+
             } catch (error) {
-                console.error('Error processing authentication data:', error);
-                // Redirect to login on error
-                setTimeout(() => {
-                    window.location.href = './login.html';
-                }, 2000);
-            }
-        } else {
-            // No token or user data, redirect to login
-            console.error('Missing authentication data');
+            console.error('❌ Error parsing auth data:', error);
+
+            // Clear corrupted data
+            localStorage.removeItem('userToken');
+            localStorage.removeItem('userData');
+
+            // Redirect to login
             setTimeout(() => {
                 window.location.href = './login.html';
             }, 2000);
+            }
+        } else {
+            console.error('❌ Missing token or user data in URL');
+
+            // Clean up
+            localStorage.removeItem('userToken');
+            localStorage.removeItem('userData');
+
+            // Redirect to login
+            setTimeout(() => {
+            window.location.href = './login.html';
+            }, 2000);
         }
-    </script>
+</script>
+
 </body>
 </html>

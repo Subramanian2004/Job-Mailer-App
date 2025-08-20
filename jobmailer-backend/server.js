@@ -11,12 +11,12 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const multer = require('multer');
 const nodemailer = require('nodemailer');
 const pdf = require('pdf-parse');
+require('dotenv').config();
 
 // --- Multer Configuration for file uploads ---
 const storage = multer.memoryStorage(); // Store file in memory
 const upload = multer({ storage: storage });
 
-require('dotenv').config();
 
 const app = express();
 
@@ -58,39 +58,92 @@ function authenticateToken(req, res, next) {
     });
 }
 
+// Route: Verify token validity
+app.get('/api/auth/verify', authenticateToken, (req, res) => {
+  res.json({
+    valid: true,
+    user: req.user
+  });
+});
+
 // --- Passport.js (Google OAuth) Configuration ---
-passport.use(new GoogleStrategy({
+// --- Google Strategy ---
+passport.use(new GoogleStrategy(
+  {
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackURL: "/api/auth/google/callback"
   },
   async (accessToken, refreshToken, profile, done) => {
+    const googleId = profile.id;
+    const email = profile.emails[0].value;
+    const name = profile.displayName;
+
     try {
-        // Find or create user
-        const googleId = profile.id;
-        const email = profile.emails[0].value;
-        const name = profile.displayName;
+      // 1. Find user by email
+      let result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
 
-        let user = await pool.query('SELECT * FROM users WHERE google_id = $1', [googleId]);
+      if (result.rows.length > 0) {
+        let user = result.rows[0];
 
-        if (user.rows.length === 0) {
-            // User doesn't exist, create them
-            const newUser = await pool.query(
-                'INSERT INTO users (name, email, google_id, last_login) VALUES ($1, $2, $3, NOW()) RETURNING *',
-                [name, email, googleId]
-            );
-            user = newUser;
+        if (!user.google_id) {
+          // If google_id not set, link it
+          const updated = await pool.query(
+            'UPDATE users SET google_id = $1, last_login = NOW() WHERE email = $2 RETURNING *',
+            [googleId, email]
+          );
+          user = updated.rows[0];
         } else {
-            // User exists, update last login
-            await pool.query('UPDATE users SET last_login = NOW() WHERE google_id = $1', [googleId]);
+          // Update last_login
+          await pool.query('UPDATE users SET last_login = NOW() WHERE email = $1', [email]);
         }
-        
-        return done(null, user.rows[0]);
+
+        return done(null, user);
+      } else {
+        // 2. Insert new user if none found
+        const newUser = await pool.query(
+          'INSERT INTO users (name, email, google_id, last_login) VALUES ($1, $2, $3, NOW()) RETURNING *',
+          [name, email, googleId]
+        );
+        return done(null, newUser.rows[0]);
+      }
     } catch (error) {
-        return done(error, false);
+      console.error("Google OAuth Error:", error);
+      return done(error, false);
     }
   }
 ));
+
+// --- Google Auth Routes ---
+app.get('/api/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+app.get(
+  '/api/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login.html?error=auth_failed', session: false }),
+  (req, res) => {
+    const user = req.user;
+
+    // Sign a JWT
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    // Redirect to frontend with token + user
+    const frontendUrl = 'http://127.0.0.1:5500';
+    res.redirect(
+      `${frontendUrl}/auth-success.html?token=${token}&user=${encodeURIComponent(JSON.stringify({
+        id: user.id,
+        name: user.name,
+        email: user.email
+      }))}`
+    );
+  }
+);
+
 
 passport.serializeUser((user, done) => {
     done(null, user.id);
@@ -163,28 +216,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Google OAuth Routes
-app.get('/api/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-app.get('/api/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login.html?error=auth_failed' }),
-  (req, res) => {
-    // Successful authentication
-    const user = req.user;
-    const token = jwt.sign(
-        { id: user.id, email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: '1d' }
-    );
-    
-    // Redirect to a success page on the frontend with the token
-    const frontendUrl = 'http://127.0.0.1:5500'; // Or your frontend server URL
-    res.redirect(`${frontendUrl}/auth-success.html?token=${token}&user=${encodeURIComponent(JSON.stringify({
-        id: user.id,
-        name: user.name,
-        email: user.email
-    }))}`);
-  }
-);
 
 // --- AI Email Generation Route ---
 // Note: 'upload.single('resume')' matches the field name from the frontend
