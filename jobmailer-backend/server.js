@@ -300,6 +300,7 @@ app.post('/api/emails/dispatch', authenticateToken, upload.single('resume'), asy
     // 3. Define the email options
     const mailOptions = {
         from: `"${userName}" <${process.env.EMAIL_USER}>`, // Sender address (shows user name)
+        replyTo: req.user.email, // Reply-to address (user's email)
         to: recruiterEmail,             // Recipient
         subject: subject,               // Subject line
         html: emailBody.replace(/\n/g, '<br>'), // Convert newlines to HTML line breaks for better formatting
@@ -403,6 +404,7 @@ app.post('/api/emails/dispatch-general', authenticateToken, upload.single('attac
 
     const mailOptions = {
         from: `"${userName}" <${process.env.EMAIL_USER}>`,
+        replyTo: req.user.email, // Reply-to address (user's email)
         to: recipientEmail,
         subject: subject,
         html: emailBody.replace(/\n/g, '<br>'),
