@@ -117,9 +117,9 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
 });
 
 // Google OAuth login
-document.getElementById('google-login').addEventListener('click', () => {
-    window.location.href = `${API_URL}/auth/google`;
-});
+// document.getElementById('google-login').addEventListener('click', () => {
+//     window.location.href = `${API_URL}/auth/google`;
+// });
 
 // Check for remembered email
 window.addEventListener('DOMContentLoaded', () => {
@@ -179,70 +179,45 @@ function showToast(message, type = '') {
 // Add this to the end of your existing login.js file
 
 // Check for OAuth error messages in URL parameters
-window.addEventListener('DOMContentLoaded', () => {
-    const rememberedEmail = localStorage.getItem('rememberedEmail');
-    if (rememberedEmail) {
-        document.getElementById('email').value = rememberedEmail;
-        document.getElementById('remember-me').checked = true;
-    }
+// window.addEventListener('DOMContentLoaded', () => {
+//     const rememberedEmail = localStorage.getItem('rememberedEmail');
+//     if (rememberedEmail) {
+//         document.getElementById('email').value = rememberedEmail;
+//         document.getElementById('remember-me').checked = true;
+//     }
     
-    // Check if already logged in
-    const token = localStorage.getItem('userToken');
-    if (token) {
-        verifyToken();
-    }
+//     // Check if already logged in
+//     const token = localStorage.getItem('userToken');
+//     if (token) {
+//         verifyToken();
+//     }
     
-    // Check for OAuth errors
-    const urlParams = new URLSearchParams(window.location.search);
-    const error = urlParams.get('error');
+//     // Check for OAuth errors
+//     const urlParams = new URLSearchParams(window.location.search);
+//     const error = urlParams.get('error');
     
-    if (error) {
-        let message = '';
-        switch (error) {
-            case 'auth_failed':
-                message = 'Google authentication failed. Please try again.';
-                break;
-            case 'processing_failed':
-                message = 'Error processing authentication data. Please try again.';
-                break;
-            case 'missing_data':
-                message = 'Authentication data missing. Please try again.';
-                break;
-            default:
-                message = 'Authentication error. Please try again.';
-        }
-        showToast(message, 'error');
+//     if (error) {
+//         let message = '';
+//         switch (error) {
+//             case 'auth_failed':
+//                 message = 'Google authentication failed. Please try again.';
+//                 break;
+//             case 'processing_failed':
+//                 message = 'Error processing authentication data. Please try again.';
+//                 break;
+//             case 'missing_data':
+//                 message = 'Authentication data missing. Please try again.';
+//                 break;
+//             default:
+//                 message = 'Authentication error. Please try again.';
+//         }
+//         showToast(message, 'error');
         
-        // Clean URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-    }
-});
+//         // Clean URL
+//         window.history.replaceState({}, document.title, window.location.pathname);
+//     }
+// });
 
-// --- Verify JWT token with backend ---
-async function verifyToken() {
-  const token = localStorage.getItem('userToken');
-
-  try {
-    const response = await fetch(`${API_URL}/auth/verify`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (response.ok) {
-      // Token valid → go to dashboard
-      window.location.href = './index.html';
-    } else {
-      // Token invalid → clear storage
-      localStorage.removeItem('userToken');
-      localStorage.removeItem('userData');
-    }
-  } catch (error) {
-    console.error('❌ Token verification failed:', error);
-    localStorage.removeItem('userToken');
-    localStorage.removeItem('userData');
-  }
-}
 
 // --- Simple toast popup ---
 function showToast(message, type = '') {
