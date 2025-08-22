@@ -72,6 +72,25 @@ body {
 }
 
 .profile-pic {
+  font-size: 20px;         /* size of the icon */
+  color: #fff;             /* default icon color */
+  background: #212221;     /* background color (you can change this) */
+  border-radius: 50%;      /* make it round */
+  padding: 10px;           /* spacing around the icon */
+  display: inline-flex;    /* center icon */
+  justify-content: center; 
+  align-items: center;
+  width: 40px;             /* circle size */
+  height: 40px;
+  cursor: pointer;         /* hover pointer */
+  transition: all 0.3s ease;
+}
+
+.profile-pic:hover {
+  background: hotpink;    
+  transform: scale(1.05);  
+}
+/* .profile-pic {
     width: 40px;
     height: 45px;
     border-radius: 50%;
@@ -84,7 +103,7 @@ body {
 
 .profile-pic:hover {
     transform: scale(1.05);
-}
+} */
 
 .dropdown-menu {
     position: absolute;
@@ -118,9 +137,10 @@ body {
 
 .dropdown-avatar {
     width: 50px;
-    height: 50px;
+    height: 30px;
     border-radius: 50%;
     object-fit: cover;
+    font-size: 25px;
 }
 
 .dropdown-info {
