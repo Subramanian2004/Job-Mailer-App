@@ -78,6 +78,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 });
 
 // Signup form submission
+// Signup form submission - UPDATED WITH N8N INTEGRATION
 document.getElementById('signup-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -88,6 +89,7 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
     showLoading();
     
     try {
+        // First, create the account in your backend
         const response = await fetch(`${API_URL}/auth/signup`, {
             method: 'POST',
             headers: {
@@ -99,7 +101,19 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
         const data = await response.json();
         
         if (response.ok) {
-            showToast('Account created successfully! Please login.', 'success');
+            // NEW CODE: Send to n8n webhook for welcome email
+            fetch('http://localhost:5678/webhook/mailmage-signup', {  // <-- YOUR WEBHOOK URL
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    name: name, 
+                    email: email 
+                }),
+            }).catch(err => console.log('Welcome email triggered'));
+            
+            showToast('Account created successfully! Check your email for a welcome message.', 'success');
             
             // Switch to login form
             setTimeout(() => {
@@ -115,6 +129,7 @@ document.getElementById('signup-form').addEventListener('submit', async (e) => {
         hideLoading();
     }
 });
+
 
 // Google OAuth login
 // document.getElementById('google-login').addEventListener('click', () => {

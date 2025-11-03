@@ -1,5 +1,4 @@
 // home.js
-
 // --- 1. Authentication Check Logic ---
 // This code block runs as soon as the DOM is ready.
 document.addEventListener('DOMContentLoaded', function() {
@@ -25,16 +24,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Specifically change the navigation bar link text and style.
         if (navLoginLink) {
             navLoginLink.textContent = 'Dashboard';
-            // Optional: change class if you have a different style for the dashboard button
-            // navLoginLink.classList.remove('login-btn'); 
-            // navLoginLink.classList.add('dashboard-btn');
         }
     }
     // If user is not logged in, no changes are needed, links remain as default.
 });
 
 
-// --- 2. Your Existing Animation and Effects Logic ---
+// --- 2.Existing Animation and Effects Logic ---
 // This will run correctly after the auth check.
 
 // Navbar scroll effect

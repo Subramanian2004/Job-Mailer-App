@@ -17,7 +17,6 @@ require('dotenv').config();
 const storage = multer.memoryStorage(); // Store file in memory
 const upload = multer({ storage: storage });
 
-
 const app = express();
 
 // --- Middleware ---
@@ -32,8 +31,18 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // --- Initialize the Generative AI model ---
+console.log('Initializing Gemini AI with API Key:', process.env.GEMINI_API_KEY ? 'Present' : 'Missing');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash"});
+
+// Use gemini-pro model which is more stable
+const model = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+
+// Test the model on startup
+model.generateContent("test").then(() => {
+    console.log("✓ Gemini model initialized successfully");
+}).catch(err => {
+    console.error("✗ Gemini model initialization failed:", err.message);
+});
 
 // --- PostgreSQL Connection ---
 const pool = new Pool({
@@ -66,85 +75,6 @@ app.get('/api/auth/verify', authenticateToken, (req, res) => {
   });
 });
 
-// --- Passport.js (Google OAuth) Configuration ---
-// --- Google Strategy ---
-// passport.use(new GoogleStrategy(
-//   {
-//     clientID: process.env.GOOGLE_CLIENT_ID,
-//     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-//     callbackURL: "/api/auth/google/callback"
-//   },
-//   async (accessToken, refreshToken, profile, done) => {
-//     const googleId = profile.id;
-//     const email = profile.emails[0].value;
-//     const name = profile.displayName;
-
-//     try {
-//       // 1. Find user by email
-//       let result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-
-//       if (result.rows.length > 0) {
-//         let user = result.rows[0];
-
-//         if (!user.google_id) {
-//           // If google_id not set, link it
-//           const updated = await pool.query(
-//             'UPDATE users SET google_id = $1, last_login = NOW() WHERE email = $2 RETURNING *',
-//             [googleId, email]
-//           );
-//           user = updated.rows[0];
-//         } else {
-//           // Update last_login
-//           await pool.query('UPDATE users SET last_login = NOW() WHERE email = $1', [email]);
-//         }
-
-//         return done(null, user);
-//       } else {
-//         // 2. Insert new user if none found
-//         const newUser = await pool.query(
-//           'INSERT INTO users (name, email, google_id, last_login) VALUES ($1, $2, $3, NOW()) RETURNING *',
-//           [name, email, googleId]
-//         );
-//         return done(null, newUser.rows[0]);
-//       }
-//     } catch (error) {
-//       console.error("Google OAuth Error:", error);
-//       return done(error, false);
-//     }
-//   }
-// ));
-
-// --- Google Auth Routes ---
-// app.get('/api/auth/google',
-//   passport.authenticate('google', { scope: ['profile', 'email'] })
-// );
-
-// app.get(
-//   '/api/auth/google/callback',
-//   passport.authenticate('google', { failureRedirect: '/login.html?error=auth_failed', session: false }),
-//   (req, res) => {
-//     const user = req.user;
-
-//     // Sign a JWT
-//     const token = jwt.sign(
-//       { id: user.id, email: user.email },
-//       process.env.JWT_SECRET,
-//       { expiresIn: '1d' }
-//     );
-
-//     // Redirect to frontend with token + user
-//     const frontendUrl = 'http://127.0.0.1:5500';
-//     res.redirect(
-//       `${frontendUrl}/auth-success.html?token=${token}&user=${encodeURIComponent(JSON.stringify({
-//         id: user.id,
-//         name: user.name,
-//         email: user.email
-//       }))}`
-//     );
-//   }
-// );
-
-
 passport.serializeUser((user, done) => {
     done(null, user.id);
 });
@@ -157,7 +87,6 @@ passport.deserializeUser(async (id, done) => {
         done(error, null);
     }
 });
-
 
 // --- API Routes ---
 
@@ -215,11 +144,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-// Google OAuth Routes
-
-
 // --- AI Email Generation Route ---
-// Note: 'upload.single('resume')' matches the field name from the frontend
 app.post('/api/ai/generate-email', upload.single('resume'), async (req, res) => {
     const { role, userName } = req.body;
     
@@ -231,7 +156,9 @@ app.post('/api/ai/generate-email', upload.single('resume'), async (req, res) => 
         const pdfData = await pdf(req.file.buffer);
         const resumeText = pdfData.text;
 
-        // --- THE "CONDITIONAL LOGIC" PROMPT ---
+        // Create a fresh model instance
+        const emailModel = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+
         const prompt = `
             You are a career assistant writing a factual and concise email for the role of:
             **Job Role:** "${role}"
@@ -261,7 +188,7 @@ app.post('/api/ai/generate-email', upload.single('resume'), async (req, res) => 
             ---
         `;
 
-        const result = await model.generateContent(prompt);
+        const result = await emailModel.generateContent(prompt);
         const response = await result.response;
         const fullEmailBody = response.text();
         
@@ -269,9 +196,18 @@ app.post('/api/ai/generate-email', upload.single('resume'), async (req, res) => 
 
     } catch (error) {
         console.error('AI generation error:', error);
-        if (error.message && error.message.includes('503 Service Unavailable')) {
-            return res.status(503).json({ message: 'The AI model is currently busy. Please try again in a few moments.' });
+        
+        if (error.status === 404) {
+            return res.status(500).json({ 
+                message: 'AI model configuration error. Please check the model name.',
+                error: error.message 
+            });
+        } else if (error.message && error.message.includes('503')) {
+            return res.status(503).json({ 
+                message: 'The AI model is currently busy. Please try again in a few moments.' 
+            });
         }
+        
         res.status(500).json({ message: 'Failed to generate email body.' });
     }
 });
@@ -284,7 +220,6 @@ app.post('/api/emails/dispatch', authenticateToken, upload.single('resume'), asy
         return res.status(400).json({ message: 'Missing required fields for sending email.' });
     }
 
-    // 1. Create a Nodemailer transporter using the Gmail credentials
     const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -293,17 +228,14 @@ app.post('/api/emails/dispatch', authenticateToken, upload.single('resume'), asy
         },
     });
 
-    // 2. Extract subject from the email body (assuming first line is the subject)
-    const bodyLines = emailBody.split('\n');
-    const subject = `Application for ${role} - ${userName}`; // A more robust subject line
+    const subject = `Application for ${role} - ${userName}`;
 
-    // 3. Define the email options
     const mailOptions = {
-        from: `"${userName}" <${process.env.EMAIL_USER}>`, // Sender address (shows user name)
-        replyTo: req.user.email, // Reply-to address (user's email)
-        to: recruiterEmail,             // Recipient
-        subject: subject,               // Subject line
-        html: emailBody.replace(/\n/g, '<br>'), // Convert newlines to HTML line breaks for better formatting
+        from: `"${userName}" <${process.env.EMAIL_USER}>`,
+        replyTo: req.user.email,
+        to: recruiterEmail,
+        subject: subject,
+        html: emailBody.replace(/\n/g, '<br>'),
         attachments: [
             {
                 filename: req.file.originalname,
@@ -312,10 +244,8 @@ app.post('/api/emails/dispatch', authenticateToken, upload.single('resume'), asy
         ],
     };
 
-    // 4. Send the email
     try {
         await transporter.sendMail(mailOptions);
-        // We will add database saving here in the next step
         res.status(200).json({ success: true, message: 'Email sent successfully!' });
     } catch (error) {
         console.error('Nodemailer Error:', error);
@@ -324,10 +254,9 @@ app.post('/api/emails/dispatch', authenticateToken, upload.single('resume'), asy
 });
 
 // --- EMAIL HISTORY ROUTES ---
-// 1. GET: Fetch all email history for the logged-in user
 app.get('/api/history', authenticateToken, async (req, res) => {
     try {
-        const userId = req.user.id; // Get user ID from the authenticated token
+        const userId = req.user.id;
         const historyResult = await pool.query(
             'SELECT * FROM email_history WHERE user_id = $1 ORDER BY sent_at DESC',
             [userId]
@@ -339,7 +268,6 @@ app.get('/api/history', authenticateToken, async (req, res) => {
     }
 });
 
-// 2. POST: Save a new sent email to the user's history
 app.post('/api/history', authenticateToken, async (req, res) => {
     const { recruiterEmail, role, emailBody, resumeFile } = req.body;
     const userId = req.user.id;
@@ -361,14 +289,12 @@ app.post('/api/history', authenticateToken, async (req, res) => {
     }
 });
 
-// 3. DELETE: Remove an email from the user's history
 app.delete('/api/history/:id', authenticateToken, async (req, res) => {
     try {
         const historyId = req.params.id;
         const userId = req.user.id;
 
         const deleteResult = await pool.query(
-            // We also check user_id to ensure a user can only delete THEIR OWN history
             'DELETE FROM email_history WHERE id = $1 AND user_id = $2 RETURNING *',
             [historyId, userId]
         );
@@ -384,10 +310,8 @@ app.delete('/api/history/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// UPDATED: Route for sending general emails (now with optional attachment)
-// We add the `upload.single('attachment')` middleware
+// Route for sending general emails
 app.post('/api/emails/dispatch-general', authenticateToken, upload.single('attachment'), async (req, res) => {
-    // Note: with multer, text fields are in req.body, file is in req.file
     const { recipientEmail, subject, emailBody, userName } = req.body;
 
     if (!recipientEmail || !subject || !emailBody || !userName) {
@@ -404,14 +328,13 @@ app.post('/api/emails/dispatch-general', authenticateToken, upload.single('attac
 
     const mailOptions = {
         from: `"${userName}" <${process.env.EMAIL_USER}>`,
-        replyTo: req.user.email, // Reply-to address (user's email)
+        replyTo: req.user.email,
         to: recipientEmail,
         subject: subject,
         html: emailBody.replace(/\n/g, '<br>'),
-        attachments: [], // Start with an empty attachments array
+        attachments: [],
     };
     
-    // NEW: If a file was uploaded, add it to the attachments array
     if (req.file) {
         mailOptions.attachments.push({
             filename: req.file.originalname,
@@ -422,7 +345,6 @@ app.post('/api/emails/dispatch-general', authenticateToken, upload.single('attac
 
     try {
         await transporter.sendMail(mailOptions);
-        // We could also save this to history, but we'll skip that for now to keep it simple.
         res.status(200).json({ success: true, message: 'Email sent successfully!' });
     } catch (error) {
         console.error('General Nodemailer Error:', error);
@@ -430,17 +352,25 @@ app.post('/api/emails/dispatch-general', authenticateToken, upload.single('attac
     }
 });
 
-// server.js -> replace this route
-
+// AI Compose Email Route
 app.post('/api/ai/compose-email', authenticateToken, async (req, res) => {
-    const { points } = req.body; // Subject is no longer needed from the user
-    const userName = req.user.name;
+    const { points } = req.body;
+    
+    // Get userName from the database
+    let userName = 'User';
+    try {
+        const userResult = await pool.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+        if (userResult.rows.length > 0) {
+            userName = userResult.rows[0].name;
+        }
+    } catch (error) {
+        console.error('Error fetching user name:', error);
+    }
 
     if (!points) {
         return res.status(400).json({ message: 'Key points are required.' });
     }
 
-    // --- NEW PROMPT FOR JSON OUTPUT ---
     const prompt = `
         You are an AI assistant that writes professional emails.
         Analyze the user's key points and generate a JSON object containing a suitable "subject" and a full "emailBody".
@@ -458,20 +388,61 @@ app.post('/api/ai/compose-email', authenticateToken, async (req, res) => {
     `;
 
     try {
-        const result = await model.generateContent(prompt);
+        const composeModel = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+        
+        const result = await composeModel.generateContent(prompt);
         const response = await result.response;
+        
         // Clean the response to ensure it's valid JSON
         let jsonString = response.text().replace(/```json\n/g, '').replace(/```/g, '').trim();
         
-        // Parse the JSON string into an object
-        const emailData = JSON.parse(jsonString);
+        // Find JSON object in the response
+        const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            jsonString = jsonMatch[0];
+        }
         
-        // Send the structured data back to the frontend
+        const emailData = JSON.parse(jsonString);
         res.json(emailData);
 
     } catch (error) {
         console.error("AI composition error:", error);
+        
+        if (error instanceof SyntaxError) {
+            return res.status(500).json({ 
+                message: 'Failed to parse AI response. Please try again.',
+                error: 'JSON parsing error' 
+            });
+        }
+        
+        if (error.status === 404) {
+            return res.status(500).json({ 
+                message: 'AI model not found. Please contact support.',
+                error: error.message 
+            });
+        }
+        
         res.status(503).json({ message: "AI service is currently unavailable. Please try again." });
+    }
+});
+
+// Test route to check model status
+app.get('/api/test/model-status', async (req, res) => {
+    try {
+        const testModel = genAI.getGenerativeModel({ model: "models/gemini-2.5-flash" });
+        const result = await testModel.generateContent("Say 'Hello'");
+        const response = await result.response;
+        const text = response.text();
+        res.json({ 
+            status: 'Model is working', 
+            testResponse: text,
+            modelUsed: 'models/gemini-2.5-flash'
+        });
+    } catch (error) {
+        res.json({ 
+            status: 'Model error', 
+            error: error.message 
+        });
     }
 });
 
