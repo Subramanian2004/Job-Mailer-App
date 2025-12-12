@@ -346,6 +346,27 @@ footer a i:hover {
     color: #ff5252;
 }
 
+/* Draft Auto-Save Styles */
+#draftIndicator {
+  animation: fadeInOut 2s ease;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(-10px); }
+  20% { opacity: 1; transform: translateY(0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.draft-recovered {
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .Email-header {

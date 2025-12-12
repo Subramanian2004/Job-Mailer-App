@@ -1,6 +1,4 @@
 // login.js
-
-// API base URL - update this with your backend URL
 const API_URL = 'http://localhost:3000/api';
 
 // DOM elements

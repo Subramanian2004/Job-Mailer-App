@@ -1,3 +1,140 @@
+class DraftManager {
+    constructor() {
+        this.DRAFT_KEY = 'mailmage_draft';
+        this.AUTO_SAVE_DELAY = 1000; 
+        this.saveTimeout = null;
+        
+        // Initialize after DOM is ready
+        this.initializeDraft();
+        this.attachEventListeners();
+    }
+
+    initializeDraft() {
+        const savedDraft = this.getDraft();
+        
+        if (savedDraft && this.isDraftValid(savedDraft)) {
+            // Show draft recovered notification
+            this.showDraftRecovered();
+            
+            // Fill form with saved draft
+            document.getElementById('recipient-email').value = savedDraft.recipientEmail || '';
+            document.getElementById('email-subject').value = savedDraft.subject || '';
+            document.getElementById('email-points').value = savedDraft.emailBody || '';
+        }
+    }
+
+    attachEventListeners() {
+        // Attach to your existing form fields
+        const fields = ['recipient-email', 'email-subject', 'email-points'];
+        
+        fields.forEach(fieldId => {
+            const element = document.getElementById(fieldId);
+            if (element) {
+                element.addEventListener('input', () => {
+                    this.scheduleSave();
+                });
+            }
+        });
+    }
+
+    scheduleSave() {
+        // Clear previous timeout
+        if (this.saveTimeout) {
+            clearTimeout(this.saveTimeout);
+        }
+
+        // Set new timeout
+        this.saveTimeout = setTimeout(() => {
+            this.saveDraft();
+        }, this.AUTO_SAVE_DELAY);
+    }
+
+    saveDraft() {
+        const draft = {
+            recipientEmail: document.getElementById('recipient-email').value,
+            subject: document.getElementById('email-subject').value,
+            emailBody: document.getElementById('email-points').value,
+            timestamp: new Date().toISOString(),
+            lastModified: Date.now()
+        };
+
+        // Only save if there's actual content
+        if (draft.recipientEmail || draft.subject || draft.emailBody) {
+            localStorage.setItem(this.DRAFT_KEY, JSON.stringify(draft));
+            this.showSaveIndicator();
+        }
+    }
+
+    getDraft() {
+        const draftString = localStorage.getItem(this.DRAFT_KEY);
+        return draftString ? JSON.parse(draftString) : null;
+    }
+
+    isDraftValid(draft) {
+        if (!draft || !draft.lastModified) return false;
+        // Draft expires after 7 days
+        const EXPIRY_TIME = 7 * 24 * 60 * 60 * 1000;
+        const age = Date.now() - draft.lastModified;
+        return age < EXPIRY_TIME;
+    }
+
+    clearDraft() {
+        localStorage.removeItem(this.DRAFT_KEY);
+    }
+
+    showSaveIndicator() {
+        // Check if indicator exists, if not create it
+        let indicator = document.getElementById('draftIndicator');
+        if (!indicator) {
+            indicator = document.createElement('span');
+            indicator.id = 'draftIndicator';
+            indicator.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #4CAF50;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-size: 14px;
+                z-index: 1000;
+                display: none;
+                animation: fadeInOut 2s ease;
+            `;
+            document.body.appendChild(indicator);
+        }
+        
+        indicator.textContent = '✓ Draft saved';
+        indicator.style.display = 'block';
+        
+        setTimeout(() => {
+            indicator.style.display = 'none';
+        }, 2000);
+    }
+
+    showDraftRecovered() {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            background: #2196F3;
+            color: white;
+            padding: 12px 20px;
+            margin: 10px auto;
+            border-radius: 5px;
+            text-align: center;
+            max-width: 500px;
+            animation: slideDown 0.3s ease;
+        `;
+        notification.innerHTML = '✨ <strong>Draft Recovered!</strong> We found your unsent email from the last session.';
+        
+        const container = document.querySelector('.compose-container') || document.querySelector('.container') || document.body;
+        container.insertBefore(notification, container.firstChild);
+        
+        setTimeout(() => notification.remove(), 5000);
+    }
+}
+
+// Global draft manager instance
+let draftManager;
 
 document.addEventListener('DOMContentLoaded', function() {
     // Authentication Check
@@ -10,11 +147,45 @@ document.addEventListener('DOMContentLoaded', function() {
     // Setup UI elements and listeners
     setupProfileDropdown();
     
+    // Initialize Draft Manager - NEW
+    draftManager = new DraftManager();
+    
     // Attach Event Listeners to buttons
     document.getElementById('Generate-ai').addEventListener('click', generateAIEmail);
     document.getElementById('send-email').addEventListener('click', sendEmail);
     document.getElementById('file-attachment').addEventListener('change', handleFileChange);
+    
+    // Add clear draft button if needed - NEW
+    addClearDraftButton();
 });
+
+// NEW FUNCTION - Add clear draft button
+function addClearDraftButton() {
+    const sendButton = document.getElementById('send-email');
+    if (sendButton && sendButton.parentElement) {
+        const clearDraftBtn = document.createElement('button');
+        clearDraftBtn.type = 'button';
+        clearDraftBtn.className = 'clear-draft-btn';
+        clearDraftBtn.innerHTML = '<i class="fas fa-trash"></i> Clear Draft';
+        clearDraftBtn.style.cssText = `
+            background: #ff5252;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-left: 10px;
+        `;
+        clearDraftBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear the draft?')) {
+                draftManager.clearDraft();
+                clearForm();
+                showStatus('Draft cleared', 'info');
+            }
+        });
+        sendButton.parentElement.appendChild(clearDraftBtn);
+    }
+}
 
 function setupProfileDropdown() {
     // It handles the user info and logout button in the header
@@ -54,7 +225,6 @@ function handleFileChange() {
 }
 
 async function generateAIEmail() {
-    // ... (This function is correct from the previous step) ...
     const points = document.getElementById('email-points').value;
     const button = document.getElementById('Generate-ai');
 
@@ -79,6 +249,9 @@ async function generateAIEmail() {
         document.getElementById('email-subject').value = data.subject;
         document.getElementById('email-points').value = data.emailBody;
         showStatus("Email generated successfully!", "success");
+        
+        // Save as draft after AI generation - NEW
+        draftManager.scheduleSave();
 
     } catch (error) {
         showStatus(error.message, "error");
@@ -88,9 +261,7 @@ async function generateAIEmail() {
     }
 }
 
-// --- THIS FUNCTION IS THE PRIMARY FIX ---
 async function sendEmail() {
-    // --- FIX: Get the button element directly inside the function ---
     const button = document.getElementById('send-email');
     
     const recipientEmail = document.getElementById('recipient-email').value;
@@ -144,6 +315,10 @@ async function sendEmail() {
         if (!historyResponse.ok) console.error("Email sent, but failed to save to history.");
 
         showStatus("Email sent successfully!", "success");
+        
+        // Clear draft after successful send - NEW
+        draftManager.clearDraft();
+        
         clearForm();
 
     } catch (error) {
@@ -174,3 +349,18 @@ function validateEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).toLowerCase());
 }
 
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateY(-10px); }
+        20% { opacity: 1; transform: translateY(0); }
+        80% { opacity: 1; }
+        100% { opacity: 0; }
+    }
+    
+    @keyframes slideDown {
+        from { transform: translateY(-20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+`;
+document.head.appendChild(style);

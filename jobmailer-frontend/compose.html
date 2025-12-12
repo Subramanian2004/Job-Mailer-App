@@ -6,6 +6,22 @@
     <title>Compose Email - MailMagE</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="./css/style.css"> 
+    <!-- Add draft styles -->
+    <style>
+    #draftIndicator {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4CAF50;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 50px;
+        margin: 30px;
+        font-size: 14px;
+        display: none;
+        z-index: 1000;
+    }
+    </style>
 </head>
 <body>
     <header>
@@ -78,6 +94,9 @@
         </div>
     </div>
 
+    <!-- Draft indicator -->
+    <span id="draftIndicator"></span>
+
     <footer>
         <div>
             <p id="status" class="colors"></p>
@@ -91,5 +110,6 @@
     </footer>
 
     <script src="./js/compose.js"></script>
+    <script src="./js/draft.js"></script>
 </body>
 </html>
